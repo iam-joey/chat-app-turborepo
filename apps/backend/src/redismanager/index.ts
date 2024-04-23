@@ -7,7 +7,7 @@ export class RedisInstance {
   private static instance: RedisInstance;
   private subscriber: Redis;
   private publisher: Redis;
-  private userRooms: Map<string, string[]>; //user
+  private userRooms: Map<string, string[]>; //userId and his rooms in present
   private roomUsers: Map<
     string,
     { [userId: string]: { [connection: string]: WebSocket } }
@@ -43,8 +43,6 @@ export class RedisInstance {
   }
 
   public async storeInRedis(roomId: string, userId: string, ws: WebSocket) {
-    //temp storage of users who are active
-    console.log("i here");
     if (!this.userRooms.get(userId)) {
       this.userRooms.set(userId, []);
     }
@@ -66,7 +64,6 @@ export class RedisInstance {
     if (!this.subscribedRooms.has(roomId)) {
       await this.subscribeToRoom(roomId, userId);
     }
-    console.log("size is ", this.subscribedRooms.size);
   }
 
   private async subscribeToRoom(roomId: string, userId: string) {
@@ -75,11 +72,12 @@ export class RedisInstance {
         if (err) {
           console.error(`Error subscribing to room ${roomId}: ${err}`);
         } else {
-          console.log(`Subscribed to messages for room ${roomId}`);
+          console.log(
+            ` ${userId} subscribed to  room ${roomId} because he's first`
+          );
         }
       });
       await this.subscriber.on("message", (channel, message) => {
-        console.log(`i'm ${userId} getting triggered someone message us `);
         this.handleMessage(channel, message, roomId);
       });
       this.subscribedRooms.add(roomId);
@@ -117,25 +115,39 @@ export class RedisInstance {
   }
 
   public removeFromRedisAfterUserLeft(roomId: string, userId: string) {
-    const userRooms = this.userRooms.get(userId);
+    const userRooms = this.userRooms.get(userId); //returns specifi user presnt in how many rooms
+    console.log(userRooms);
+    console.log(`${userId} present in these rooms ${userRooms}`);
     if (userRooms && userRooms.length > 0) {
+      console.log("inside removing user from the room");
       const filteredRooms = userRooms.filter(
         (userRoomId) => userRoomId !== roomId
       );
+      console.log(
+        `user present in these rooms ${filteredRooms} after removing them from ${roomId}`
+      );
       if (filteredRooms.length > 0) {
+        console.log("removing user 1");
         this.userRooms.set(userId, filteredRooms);
       } else {
+        console.log("removing user 2");
         this.userRooms.delete(userId);
-        this.publisher.unsubscribe(userId);
       }
     }
 
     const usersInRoom = this.roomUsers.get(roomId);
+
+    if (Object.keys(usersInRoom!).length >= 1) {
+      delete usersInRoom![userId];
+    }
+    console.log("users in the room", usersInRoom);
+    console.log("length of the room", Object.keys(usersInRoom!).length);
     if (usersInRoom && Object.keys(usersInRoom).length === 0) {
+      console.log("im inside for removing");
       this.subscriber.unsubscribe(roomId);
       this.subscriber.removeListener("message", this.handleMessage);
       this.subscribedRooms.delete(roomId);
     }
-    console.log("size ", this.subscribedRooms.size);
+    console.log("size", this.subscribedRooms.size);
   }
 }

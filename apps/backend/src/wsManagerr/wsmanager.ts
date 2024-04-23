@@ -7,6 +7,7 @@ import {
   SendMessageType,
   SupportedMessages,
 } from "../types";
+import { UserManager } from "../userManager/usermanager";
 
 const redis_uri = envVariables.REDIS_URI;
 const redis = RedisInstance.getInstance(redis_uri);
@@ -35,6 +36,11 @@ export class WebSocketManager {
       case SupportedMessages.JoinRoom:
         const joinMessage = parsedMessage.payload as JoinMessageType;
         console.log("inside", joinMessage);
+        UserManager.getInstance().addUser(
+          joinMessage.userId,
+          joinMessage.roomId,
+          ws
+        );
         await redis.storeInRedis(joinMessage.roomId, joinMessage.userId, ws);
         console.log("after redis store");
         break;
