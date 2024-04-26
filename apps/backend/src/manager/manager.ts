@@ -1,7 +1,6 @@
 import {
   IncomingMessage,
   JoinMessageType,
-  leaveType,
   SendMessageType,
   SupportedMessages,
 } from "@repo/common/types";
@@ -50,16 +49,8 @@ export class User {
           this.notify("You have not joined the room");
           return;
         }
-        redis.publishToRoom(
-          sendMessage.roomId,
-          sendMessage.message,
-          this.userId
-        );
+        redis.publishToRoom(sendMessage.roomId, sendMessage.message);
         break;
-      case SupportedMessages.Leave:
-        const message = parsedMessage.payload as leaveType;
-        redis.removeFromRedisAfterUserLeft(message.roomId, this.userId);
-        this.notify("You left");
     }
   }
 
@@ -67,9 +58,7 @@ export class User {
     this.ws.send(message);
   }
 
-  delete() {
-    this.ws.on("close", () => {
-      redis.removeFromRedisAfterUserLeft(this.userId);
-    });
+  async close() {
+    await redis.removeFromRedisAfterUserLeft(this.userId);
   }
 }

@@ -1,144 +1,98 @@
 import Redis from "ioredis";
 import WebSocket from "ws";
 
-let i = 0;
-
 export class RedisInstance {
   private static instance: RedisInstance;
   private subscriber: Redis;
   private publisher: Redis;
-  private userRooms: Map<string, string[]>; //userId and his rooms in present
+  private userRooms: Map<string, string[]>; // User's rooms
   private roomUsers: Map<
     string,
-    { [userId: string]: { [connection: string]: WebSocket } }
+    { [userId: string]: { connection: WebSocket } }
   >;
   private subscribedRooms: Set<string>;
+  private roomMessageHandlers: Map<
+    string,
+    (channel: string, message: string) => void
+  >;
 
   private constructor(url: string) {
     this.subscriber = new Redis(url);
-    this.subscribedRooms = new Set<string>();
     this.publisher = new Redis(url);
-    this.userRooms = new Map<string, string[]>();
-    this.roomUsers = new Map<
-      string,
-      { [userId: string]: { [connection: string]: WebSocket } }
-    >();
+    this.userRooms = new Map();
+    this.roomUsers = new Map();
+    this.subscribedRooms = new Set();
+    this.roomMessageHandlers = new Map();
   }
 
   public static getInstance(url: string): RedisInstance {
     if (!RedisInstance.instance) {
-      console.log("Creating new Redis instance");
-      return (RedisInstance.instance = new RedisInstance(url));
+      RedisInstance.instance = new RedisInstance(url);
     }
-    console.log("Returning Redis instance");
+    console.log("redis created");
     return RedisInstance.instance;
   }
 
-  public getSubscriber(): Redis {
-    return this.subscriber;
-  }
-
-  public getPublisher(): Redis {
-    return this.publisher;
-  }
-
   public async storeInRedis(roomId: string, userId: string, ws: WebSocket) {
-    if (!this.userRooms.get(userId)) {
+    if (!this.userRooms.has(userId)) {
       this.userRooms.set(userId, []);
     }
-    this.userRooms.set(userId, [...this.userRooms.get(userId)!, roomId]);
+    this.userRooms.get(userId)!.push(roomId);
 
-    if (!this.roomUsers.get(roomId)) {
+    if (!this.roomUsers.has(roomId)) {
       this.roomUsers.set(roomId, {});
     }
-    if (!this.roomUsers.get(roomId)![userId]) {
-      this.roomUsers.get(roomId)![userId] = {};
-    }
-    this.roomUsers.set(roomId, {
-      ...this.roomUsers.get(roomId),
-      [userId]: {
-        connection: ws,
-      },
-    });
+    this.roomUsers.get(roomId)![userId] = { connection: ws };
 
     if (!this.subscribedRooms.has(roomId)) {
-      await this.subscribeToRoom(roomId, userId);
+      await this.subscribeToRoom(roomId);
     }
   }
 
-  private async subscribeToRoom(roomId: string, userId: string) {
+  private async subscribeToRoom(roomId: string) {
     if (!this.subscribedRooms.has(roomId)) {
-      await this.subscriber.subscribe(roomId, (err, count) => {
-        if (err) {
-          console.error(`Error subscribing to room ${roomId}: ${err}`);
-        } else {
-          console.log(
-            ` ${userId} subscribed to  room ${roomId} because he's first`
-          );
+      const messageHandler = (channel: string, message: string) => {
+        if (channel === roomId) {
+          this.sendMessageToRoom(roomId, message);
         }
-      });
-      await this.subscriber.on("message", (channel, message) => {
-        if (channel == roomId) {
-          this.handleMessage(channel, message, roomId);
-        }
-      });
+      };
+      await this.subscriber.subscribe(roomId);
+      this.subscriber.on("message", messageHandler);
       this.subscribedRooms.add(roomId);
+      this.roomMessageHandlers.set(roomId, messageHandler);
     }
   }
-
-  private handleMessage = (
-    channel: string,
-    message: string,
-    roomId: string
-  ) => {
-    if (channel === roomId) {
-      console.log(this.subscriber.listenerCount(channel));
-      console.log(`someone sent a message to the room ${channel} ${i++}`);
-      console.log(`Received message for room ${roomId}: ${message}`);
-      this.sendMessageToRoom(roomId, message);
-    }
-  };
 
   private sendMessageToRoom(roomId: string, message: string) {
-    console.log(`sending message to room ${roomId}`);
     const users = this.roomUsers.get(roomId);
-    Object.keys(users!).forEach((userId) => {
-      users![userId]?.connection!.send(message);
-    });
+    if (users) {
+      Object.values(users).forEach((user) => user.connection.send(message));
+    }
   }
 
-  public publishToRoom(roomId: string, message: string, userId: string) {
-    console.log(`publishing to room ${roomId} from ${userId}`);
-    console.log(
-      "publishing ",
-      this.subscriber.listenerCount(roomId, this.handleMessage)
-    );
+  public publishToRoom(roomId: string, message: string) {
     this.publisher.publish(roomId, message);
   }
 
-  public removeFromRedisAfterUserLeft(userId: string, roomId?: string) {
-    const userRooms = this.userRooms.get(userId);
-    console.log(userRooms); //["123","321"]
-    console.log(`${userId} present in these rooms ${userRooms}`);
-
+  public removeFromRedisAfterUserLeft(userId: string) {
+    const userRooms = this.userRooms.get(userId); //["123","2313"]
     if (userRooms) {
-      this.userRooms.delete(userId);
-      userRooms?.map((roomId) => {
+      userRooms.forEach((roomId) => {
         const usersInRoom = this.roomUsers.get(roomId);
-        if (Object.keys(usersInRoom!).length >= 1) {
-          delete usersInRoom![userId];
-        }
-        console.log("users in the room", usersInRoom);
-        console.log("length of the room", Object.keys(usersInRoom!).length);
-        if (usersInRoom && Object.keys(usersInRoom).length === 0) {
-          console.log("im inside for removing");
-          this.subscriber.unsubscribe(roomId);
-          this.subscriber.removeListener("message", this.handleMessage);
-          this.subscribedRooms.delete(roomId);
+        if (usersInRoom) {
+          delete usersInRoom[userId];
+          if (Object.keys(usersInRoom).length === 0) {
+            this.subscriber.unsubscribe(roomId);
+            const handler = this.roomMessageHandlers.get(roomId);
+            if (handler) {
+              this.subscriber.removeListener("message", handler);
+              this.roomMessageHandlers.delete(roomId);
+            }
+            this.subscribedRooms.delete(roomId);
+          }
         }
       });
+      this.userRooms.delete(userId);
     }
-
-    console.log("size", this.subscribedRooms.size);
   }
 }

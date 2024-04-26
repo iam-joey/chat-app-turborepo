@@ -21,5 +21,10 @@ export class UserManager {
     console.log(`${userId} just now established a connection`);
     const user = new User(userId, ws);
     this.users.set(userId, user);
+    ws.on("close", () => {
+      console.log("connections is closed");
+      user.close();
+      this.users.delete(userId);
+    });
   }
 }

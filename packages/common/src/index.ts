@@ -74,7 +74,6 @@ export type JoinMessageType = z.infer<typeof joinMessage>;
 const sendMessage = z.object({
   message: z.string(),
   roomId: z.string(),
-  userId: z.string(),
 });
 
 export type SendMessageType = z.infer<typeof sendMessage>;
