@@ -43,7 +43,6 @@ export class User {
           this.userRooms.push(joinMessage.roomId);
         }
         await redis.storeInRedis(joinMessage.roomId, this.userId, this.ws);
-        console.log("stored in redis");
         break;
       case SupportedMessages.SendMessage:
         const sendMessage = parsedMessage.payload as SendMessageType;
@@ -69,7 +68,8 @@ export class User {
   }
 
   delete() {
-    redis.removeUserFromRedis(this.userId);
-    console.log("user removed from all rooms");
+    this.ws.on("close", () => {
+      redis.removeFromRedisAfterUserLeft(this.userId);
+    });
   }
 }

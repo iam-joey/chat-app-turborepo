@@ -78,11 +78,9 @@ export class RedisInstance {
         }
       });
       await this.subscriber.on("message", (channel, message) => {
-        console.log(
-          "listeners in this room",
-          this.subscriber.listenerCount(roomId)
-        );
-        this.handleMessage(channel, message, roomId);
+        if (channel == roomId) {
+          this.handleMessage(channel, message, roomId);
+        }
       });
       this.subscribedRooms.add(roomId);
     }
@@ -94,9 +92,10 @@ export class RedisInstance {
     roomId: string
   ) => {
     if (channel === roomId) {
+      console.log(this.subscriber.listenerCount(channel));
       console.log(`someone sent a message to the room ${channel} ${i++}`);
       console.log(`Received message for room ${roomId}: ${message}`);
-      this.sendMessageToRoom(channel, message);
+      this.sendMessageToRoom(roomId, message);
     }
   };
 
@@ -117,66 +116,29 @@ export class RedisInstance {
     this.publisher.publish(roomId, message);
   }
 
-  public removeFromRedisAfterUserLeft(roomId: string, userId: string) {
-    const userRooms = this.userRooms.get(userId); //returns specific user present in how many rooms
-    console.log(userRooms);
+  public removeFromRedisAfterUserLeft(userId: string, roomId?: string) {
+    const userRooms = this.userRooms.get(userId);
+    console.log(userRooms); //["123","321"]
     console.log(`${userId} present in these rooms ${userRooms}`);
-    if (userRooms && userRooms.length > 0) {
-      console.log("inside removing user from the room");
-      const filteredRooms = userRooms.filter(
-        (userRoomId) => userRoomId !== roomId
-      );
-      console.log(
-        `user present in these rooms ${filteredRooms} after removing them from ${roomId}`
-      );
-      if (filteredRooms.length > 0) {
-        console.log("removing user 1");
-        this.userRooms.set(userId, filteredRooms);
-      } else {
-        console.log("removing user 2");
-        this.userRooms.delete(userId);
-      }
-    }
 
-    const usersInRoom = this.roomUsers.get(roomId);
-
-    if (Object.keys(usersInRoom!).length >= 1) {
-      delete usersInRoom![userId];
-    }
-    console.log("users in the room", usersInRoom);
-    console.log("length of the room", Object.keys(usersInRoom!).length);
-    if (usersInRoom && Object.keys(usersInRoom).length === 0) {
-      console.log("im inside for removing");
-      this.subscriber.unsubscribe(roomId);
-      this.subscriber.removeListener("message", this.handleMessage);
-      this.subscribedRooms.delete(roomId);
-    }
-    console.log("size", this.subscribedRooms.size);
-  }
-
-  public removeUserFromRedis(userId: string) {
-    //first delete it from two place userRooms and roomUsers
-    let rooms = this.userRooms.get(userId);
-    console.log("rooms is ", rooms);
-    if (!rooms) {
-      return;
-    }
-    rooms.forEach((roomId) => {
-      let roomMembers = this.roomUsers.get(roomId);
-      console.log("room members", roomMembers);
-      if (Object.keys(roomMembers!).length > 0) {
-        if (roomMembers![userId]) {
-          delete roomMembers![userId];
+    if (userRooms) {
+      this.userRooms.delete(userId);
+      userRooms?.map((roomId) => {
+        const usersInRoom = this.roomUsers.get(roomId);
+        if (Object.keys(usersInRoom!).length >= 1) {
+          delete usersInRoom![userId];
         }
-        if (Object.keys(roomMembers!).length == 0) {
+        console.log("users in the room", usersInRoom);
+        console.log("length of the room", Object.keys(usersInRoom!).length);
+        if (usersInRoom && Object.keys(usersInRoom).length === 0) {
           console.log("im inside for removing");
           this.subscriber.unsubscribe(roomId);
           this.subscriber.removeListener("message", this.handleMessage);
           this.subscribedRooms.delete(roomId);
         }
-      }
-    });
+      });
+    }
+
     console.log("size", this.subscribedRooms.size);
-    this.userRooms.delete(userId);
   }
 }
