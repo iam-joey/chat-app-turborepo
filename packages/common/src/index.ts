@@ -39,6 +39,7 @@ export enum SupportedMessages {
   SendMessage = "SEND_MESSAGE",
   UpvoteMessage = "UPVOTE_MESSAGE",
   DownVoteMessage = "DOWNVOTE_MESSAGE",
+  Leave = "LEAVE",
 }
 
 export type IncomingMessage =
@@ -57,6 +58,10 @@ export type IncomingMessage =
   | {
       type: SupportedMessages.DownVoteMessage;
       payload: downVoteType;
+    }
+  | {
+      type: SupportedMessages.Leave;
+      payload: leaveType;
     };
 
 const joinMessage = z.object({
@@ -87,3 +92,9 @@ const downVote = z.object({
 });
 
 export type downVoteType = z.infer<typeof downVote>;
+
+const leave = z.object({
+  roomId: z.string(),
+});
+
+export type leaveType = z.infer<typeof leave>;

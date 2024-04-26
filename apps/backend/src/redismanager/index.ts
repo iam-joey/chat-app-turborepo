@@ -78,11 +78,16 @@ export class RedisInstance {
         }
       });
       await this.subscriber.on("message", (channel, message) => {
+        console.log(
+          "listeners in this room",
+          this.subscriber.listenerCount(roomId)
+        );
         this.handleMessage(channel, message, roomId);
       });
       this.subscribedRooms.add(roomId);
     }
   }
+
   private handleMessage = (
     channel: string,
     message: string,
@@ -95,12 +100,6 @@ export class RedisInstance {
     }
   };
 
-  private handleClose = () => {
-    console.log(
-      "User who connected getting exited from the room make another user the host"
-    );
-  };
-
   private sendMessageToRoom(roomId: string, message: string) {
     console.log(`sending message to room ${roomId}`);
     const users = this.roomUsers.get(roomId);
@@ -111,11 +110,15 @@ export class RedisInstance {
 
   public publishToRoom(roomId: string, message: string, userId: string) {
     console.log(`publishing to room ${roomId} from ${userId}`);
+    console.log(
+      "publishing ",
+      this.subscriber.listenerCount(roomId, this.handleMessage)
+    );
     this.publisher.publish(roomId, message);
   }
 
   public removeFromRedisAfterUserLeft(roomId: string, userId: string) {
-    const userRooms = this.userRooms.get(userId); //returns specifi user presnt in how many rooms
+    const userRooms = this.userRooms.get(userId); //returns specific user present in how many rooms
     console.log(userRooms);
     console.log(`${userId} present in these rooms ${userRooms}`);
     if (userRooms && userRooms.length > 0) {
@@ -149,5 +152,31 @@ export class RedisInstance {
       this.subscribedRooms.delete(roomId);
     }
     console.log("size", this.subscribedRooms.size);
+  }
+
+  public removeUserFromRedis(userId: string) {
+    //first delete it from two place userRooms and roomUsers
+    let rooms = this.userRooms.get(userId);
+    console.log("rooms is ", rooms);
+    if (!rooms) {
+      return;
+    }
+    rooms.forEach((roomId) => {
+      let roomMembers = this.roomUsers.get(roomId);
+      console.log("room members", roomMembers);
+      if (Object.keys(roomMembers!).length > 0) {
+        if (roomMembers![userId]) {
+          delete roomMembers![userId];
+        }
+        if (Object.keys(roomMembers!).length == 0) {
+          console.log("im inside for removing");
+          this.subscriber.unsubscribe(roomId);
+          this.subscriber.removeListener("message", this.handleMessage);
+          this.subscribedRooms.delete(roomId);
+        }
+      }
+    });
+    console.log("size", this.subscribedRooms.size);
+    this.userRooms.delete(userId);
   }
 }
