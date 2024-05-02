@@ -1,7 +1,5 @@
 import { WebSocket } from "ws";
-import { envVariables } from "../utils/env";
-import { RedisInstance } from "../redismanager";
-import { User } from "../manager/manager";
+import { User } from "../user/user";
 
 export class UserManager {
   private static instance: UserManager;
@@ -18,11 +16,12 @@ export class UserManager {
   }
 
   manageUser(userId: string, ws: WebSocket) {
-    console.log(`${userId} just now established a connection`);
+    console.log(`${userId} just now established a connection `);
     const user = new User(userId, ws);
     this.users.set(userId, user);
+
     ws.on("close", () => {
-      console.log("connections is closed");
+      console.log(`connections is closed `);
       user.close();
       this.users.delete(userId);
     });

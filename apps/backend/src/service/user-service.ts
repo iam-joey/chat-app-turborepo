@@ -28,6 +28,7 @@ export default class UserService {
 
   async loginUser(data: LoginSchemaType) {
     try {
+      console.log("inside servide");
       const findUser = await this.userRepo.getUser(data.email);
       if (!findUser) {
         throw new ServiceError(
@@ -50,6 +51,7 @@ export default class UserService {
       }
       const { id } = findUser;
       const token = this.generateToken({ userId: id });
+      console.log("token", token);
       return token;
     } catch (err) {
       throw err;

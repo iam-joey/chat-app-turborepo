@@ -41,11 +41,13 @@ class UserRepo {
 
   async getUser(email: string) {
     try {
+      console.log("inside repo", email);
       const user = await prisma.user.findUnique({
         where: {
           email,
         },
       });
+      console.log("responde in repo", user);
       return user;
     } catch (err) {
       throw err;

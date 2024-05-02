@@ -8,7 +8,7 @@ export default class RoomService {
 
   async createRoom(id: string) {
     try {
-      const room = await this.roomRepo.generateURL(id);
+      const room = await this.roomRepo.generateRoom(id);
       return room;
     } catch (error) {
       throw error;

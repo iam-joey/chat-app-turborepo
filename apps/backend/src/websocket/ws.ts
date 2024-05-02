@@ -4,12 +4,12 @@ import { WebSocket, WebSocketServer } from "ws";
 import { UserManager } from "../userManager/usermanager";
 import { envVariables } from "../utils/env";
 import JWT from "jsonwebtoken";
+import { DatabaseManager } from "../dbManager/dbmanager";
 
 const app = express();
 
 const httpServer = http.createServer(app);
 const wss = new WebSocketServer({ server: httpServer });
-
 wss.on("connection", async (ws: WebSocket, req: Request) => {
   try {
     const urlString = req.url;
@@ -19,7 +19,10 @@ wss.on("connection", async (ws: WebSocket, req: Request) => {
       throw new Error("You can't join the room");
     }
     const { userId }: any = JWT.verify(jwtToken, envVariables.JWT_SECRET);
-
+    const verified = await DatabaseManager.getInstance().validateUser(userId);
+    if (!verified) {
+      throw new Error("You can't join the room");
+    }
     UserManager.getInstance().manageUser(userId, ws);
   } catch (error: any) {
     console.error("WebSocket connection error:", error.message);

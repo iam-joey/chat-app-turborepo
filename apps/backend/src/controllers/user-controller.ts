@@ -39,7 +39,8 @@ export const loginUser = async (
     const userBody: LoginSchemaType = loginSchema.parse(req.body);
 
     const response = await user.loginUser(userBody);
-    return res.status(httpStatus.CREATED).json({
+
+    return res.status(201).json({
       token: response,
       err: {},
     });
@@ -63,7 +64,6 @@ export const generateURL = async (
         httpStatus.UNAUTHORIZED
       );
     }
-
     const response = await room.createRoom(userId);
     return res.status(httpStatus.CREATED).json({
       data: response,

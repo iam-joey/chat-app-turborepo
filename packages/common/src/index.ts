@@ -40,6 +40,8 @@ export enum SupportedMessages {
   UpvoteMessage = "UPVOTE_MESSAGE",
   DownVoteMessage = "DOWNVOTE_MESSAGE",
   Leave = "LEAVE",
+  Received = "RECEIVED_MESSAGE",
+  Notify = "NOTIFICATION_MESSAGE",
 }
 
 export type IncomingMessage =
@@ -64,9 +66,26 @@ export type IncomingMessage =
       payload: leaveType;
     };
 
+export type OutGoingMessage =
+  | {
+      type: SupportedMessages.Received;
+      payload: ReceivedMessage;
+    }
+  | {
+      type: SupportedMessages.Notify;
+      payload: NotifyMessage;
+    }
+  | {
+      type: SupportedMessages.UpvoteMessage;
+      payload: MessageVotesSchemaType;
+    }
+  | {
+      type: SupportedMessages.DownVoteMessage;
+      payload: MessageVotesSchemaType;
+    };
+
 const joinMessage = z.object({
   roomId: z.string(),
-  userId: z.string(),
 });
 
 export type JoinMessageType = z.infer<typeof joinMessage>;
@@ -97,3 +116,26 @@ const leave = z.object({
 });
 
 export type leaveType = z.infer<typeof leave>;
+
+const receivedMessage = z.object({
+  message: z.string(),
+  messageId: z.string(),
+  senderId: z.string(),
+});
+
+const notifyMessage = z.object({
+  message: z.string(),
+});
+
+export type NotifyMessage = z.infer<typeof notifyMessage>;
+
+export type ReceivedMessage = z.infer<typeof receivedMessage>;
+
+const MessageVotesSchema = z.record(
+  z.object({
+    UP_VOTES: z.array(z.string()),
+    DOWN_VOTES: z.array(z.string()),
+  })
+);
+
+export type MessageVotesSchemaType = z.infer<typeof MessageVotesSchema>;

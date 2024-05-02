@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import httpStatus from "http-status";
-import { object, z } from "zod";
+import { z } from "zod";
 
 export const errorHandler = (
   err: any,
