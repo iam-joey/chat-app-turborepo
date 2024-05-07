@@ -39,9 +39,13 @@ export const loginUser = async (
     const userBody: LoginSchemaType = loginSchema.parse(req.body);
 
     const response = await user.loginUser(userBody);
-
+    console.log("response came", response);
+    console.log("session id is", req.sessionID);
+    //@ts-ignore
+    req.session.visited = true;
+    res.cookie("token", response);
     return res.status(201).json({
-      token: response,
+      msg: "Logged IN",
       err: {},
     });
   } catch (err) {

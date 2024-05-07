@@ -50,6 +50,7 @@ class UserRepo {
       console.log("responde in repo", user);
       return user;
     } catch (err) {
+      console.log(err);
       throw err;
     }
   }

@@ -6,7 +6,10 @@ import { envVariables } from "../utils/env";
 const jwtKey = envVariables.JWT_SECRET;
 export const auth = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const token = req.header("Authorization");
+    const token = req.cookies.token;
+    console.log("session is", req.session);
+    console.log("session is", req.sessionStore);
+    console.log("session is", req.sessionID);
     if (!token) {
       return res
         .status(httpStatus.UNAUTHORIZED)

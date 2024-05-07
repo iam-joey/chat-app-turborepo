@@ -51,9 +51,10 @@ export default class UserService {
       }
       const { id } = findUser;
       const token = this.generateToken({ userId: id });
-      console.log("token", token);
+
       return token;
     } catch (err) {
+      console.log(err);
       throw err;
     }
   }
