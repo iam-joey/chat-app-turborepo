@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ export function Login() {
   const [hide, setHide] = useState(false);
   const emailRef = useRef("");
   const pwdRef = useRef("");
+  const navigate = useNavigate();
   const createAnAccount = async () => {
     try {
       if (!emailRef.current || !pwdRef.current) {
@@ -24,6 +25,7 @@ export function Login() {
       const res = await axios.post("http://localhost:3001/api/v1/login", data, {
         withCredentials: true,
       });
+      navigate("/");
       console.log(res);
     } catch (error) {
       console.log(error);
@@ -74,6 +76,8 @@ export function Login() {
           </CardContent>
         </Card>
       </div>
+
+      <button onClick={() => {}}>CLick me for atom</button>
     </div>
   );
 }

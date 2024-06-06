@@ -77,3 +77,16 @@ export const generateURL = async (
     next(err);
   }
 };
+
+export const me = async (req: Request, res: Response) => {
+  try {
+    //@ts-ignore
+    const token = await user.me(req.user);
+    console.log("asdasdsadasd", token);
+    return res.status(httpStatus.CREATED).json({
+      data: token,
+      msg: "All good",
+      err: {},
+    });
+  } catch (error) {}
+};

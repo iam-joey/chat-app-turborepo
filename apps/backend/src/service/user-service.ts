@@ -59,7 +59,17 @@ export default class UserService {
     }
   }
 
-  generateToken(data: JwtPayload) {
-    return jwt.sign(data, envVariables.JWT_SECRET, { expiresIn: "20h" });
+  async generateToken(data: JwtPayload) {
+    return await jwt.sign(data, envVariables.JWT_SECRET, { expiresIn: "20h" });
+  }
+
+  async me(data: JwtPayload) {
+    try {
+      const token = await this.generateToken({
+        userId: data.userId,
+      });
+      console.log("inside user service", token);
+      return token;
+    } catch (error) {}
   }
 }
